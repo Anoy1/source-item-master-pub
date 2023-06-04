@@ -8,20 +8,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ControlEntity;
+import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ItemMasterRequest;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.repository.ControlTableRespository;
+import com.anoy.load.item.master.pub.sourceitemmasterpub.repository.ItemMasterDataRespository;
 
 @Service
 public class ItemMasterService {
 
 	@Autowired
 	ControlTableRespository controlTableRespository;
+	@Autowired
+	ItemMasterDataRespository itemMasterDataRespository;
 	
 	public void process() {
 		Date runnableDate = findLastRunDate();
-		System.out.println(runnableDate);
-		
-		
+		List<ItemMasterRequest> itemMasterRequest = getItemData(runnableDate);
+		System.out.println(itemMasterRequest.get(0).getItemId());
 	}
+
+
+	private List<ItemMasterRequest> getItemData(Date runnableDate) {
+		return itemMasterDataRespository.findByCreatedDate(runnableDate);
+	}
+
 
 	private Date findLastRunDate() {
 		List<ControlEntity> controlEntity = controlTableRespository.findAll();
