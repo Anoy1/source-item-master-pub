@@ -13,6 +13,7 @@ import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ControlEntity;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ItemMasterResponse;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.repository.ControlTableRespository;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.service.ItemMasterService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @RestController
 @RequestMapping("/api")
@@ -26,7 +27,7 @@ public class ItemMasterController {
 	}
 	
 	@GetMapping("/itemRecord")
-	public ResponseEntity<ItemMasterResponse> processPublisher(){
+	public ResponseEntity<ItemMasterResponse> processPublisher() throws JsonProcessingException{
 		
 		itemMasterService.process();
 		ItemMasterResponse itemMasterResponse = new ItemMasterResponse();

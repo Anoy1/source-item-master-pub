@@ -4,6 +4,8 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
@@ -23,7 +25,7 @@ public class ItemMasterRequest {
 	@Id
 	@Column(name="ITEM_ID")
 	private Integer itemId;
-	@Column(name="ITERFACE_NAME")
+	@Column(name="INTERFACE_NAME")
 	private String interfaceName;
 	@Column(name="CREATED_DATE")
 	private Date createdDate;
@@ -37,4 +39,7 @@ public class ItemMasterRequest {
 	private String itemStatus;
 	@Column(name="ITEM_TYPE")
 	private String itemType;
+	@GeneratedValue(strategy=GenerationType.AUTO)
+	private String messageId;
+	private String runTime;
 }
