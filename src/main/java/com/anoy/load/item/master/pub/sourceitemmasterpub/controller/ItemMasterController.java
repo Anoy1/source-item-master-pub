@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ControlEntity;
+import com.anoy.load.item.master.pub.sourceitemmasterpub.model.DashBoard;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ItemMasterResponse;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.repository.ControlTableRespository;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.service.ItemMasterService;
@@ -28,8 +29,8 @@ public class ItemMasterController {
 	
 	@GetMapping("/itemRecord")
 	public ResponseEntity<ItemMasterResponse> processPublisher() throws JsonProcessingException{
-		
-		itemMasterService.process();
+		DashBoard dashBoard = new DashBoard();
+		itemMasterService.process(dashBoard);
 		ItemMasterResponse itemMasterResponse = new ItemMasterResponse();
 		itemMasterResponse.setMesssage("DATA SUCCESSFULLY PUSHED");
 		itemMasterResponse.setStatus(String.valueOf(HttpStatus.OK.value()));
