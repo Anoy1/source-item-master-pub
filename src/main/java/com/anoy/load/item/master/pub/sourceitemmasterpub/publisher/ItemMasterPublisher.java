@@ -1,6 +1,7 @@
 package com.anoy.load.item.master.pub.sourceitemmasterpub.publisher;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -23,14 +24,18 @@ public class ItemMasterPublisher {
 	
 	private static final String TOPIC = "itemmaster";
 	
-	public void kafkaSendMessage(ItemMasterRequest item, String source) {
+	public Boolean kafkaSendMessage(ItemMasterRequest item, String source,Map<Integer,String> failureItemList) {
+		Boolean sent = true;
 		try {
 		String msg = objectMapper.writeValueAsString(item);
 		kafkaTemplate.send(TOPIC, msg);
 		log.info(String.format("The message is published from %s successfully : %s", source,msg));
 		}catch(Exception e) {
-			log.error(e.getMessage());
+			sent = false;
+			failureItemList.put(item.getItemId(), e.getMessage());
+			log.error(e.getMessage() + " " + item);
 		}
+		return sent;
 	}
 
 }

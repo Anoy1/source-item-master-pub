@@ -9,6 +9,6 @@ import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ItemMasterRequest
 
 public interface ItemMasterDataRespository extends JpaRepository<ItemMasterRequest, Integer>{
 
-	List<ItemMasterRequest> findByCreatedDate(Date runnableDate);
+	List<ItemMasterRequest> findByCreatedDateAndInterfaceName(Date runnableDate,String interfaceName);
 
 }
