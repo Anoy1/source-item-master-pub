@@ -39,7 +39,6 @@ public class ItemMasterRequest {
 	private String itemStatus;
 	@Column(name="ITEM_TYPE")
 	private String itemType;
-	@GeneratedValue(strategy=GenerationType.AUTO)
 	private String messageId;
 	private String runTime;
 }
