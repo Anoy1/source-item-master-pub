@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+import com.anoy.load.item.master.pub.sourceitemmasterpub.config.ProducerPartition;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ItemMasterRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,14 +22,16 @@ public class ItemMasterPublisher {
 	ObjectMapper objectMapper = new ObjectMapper();
 	@Autowired 
 	KafkaTemplate<String, String> kafkaTemplate;
+	@Autowired
+	private ProducerPartition producerPartition;
 	
-	private static final String TOPIC = "itemmaster";
+	private static final String TOPIC = "itemtopic";
 	
 	public Boolean kafkaSendMessage(ItemMasterRequest item, String source,Map<Integer,String> failureItemList) {
 		Boolean sent = true;
 		try {
 		String msg = objectMapper.writeValueAsString(item);
-		kafkaTemplate.send(TOPIC, msg);
+		kafkaTemplate.send(TOPIC, producerPartition.returnPartition(0, 4),"run-time",msg);
 		log.info(String.format("The message is published from %s successfully : %s", source,msg));
 		}catch(Exception e) {
 			sent = false;
