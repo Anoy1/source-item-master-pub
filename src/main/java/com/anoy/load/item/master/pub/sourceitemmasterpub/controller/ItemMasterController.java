@@ -32,9 +32,16 @@ public class ItemMasterController {
 		DashBoard dashBoard = new DashBoard();
 		itemMasterService.process(dashBoard);
 		ItemMasterResponse itemMasterResponse = new ItemMasterResponse();
+		if(dashBoard.getStatus().equalsIgnoreCase("SUCCESS")) {
 		itemMasterResponse.setMesssage("DATA SUCCESSFULLY PUSHED");
 		itemMasterResponse.setStatus(String.valueOf(HttpStatus.OK.value()));
 		return new ResponseEntity<>(itemMasterResponse,HttpStatus.OK);
+		}
+		else {
+			itemMasterResponse.setMesssage("DATA FAILED TO PUSH");
+			itemMasterResponse.setStatus(String.valueOf(HttpStatus.OK.value()));
+			return new ResponseEntity<>(itemMasterResponse,HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 		
 	}
 

@@ -30,16 +30,6 @@ public class ItemMasterRequest {
 	private String interfaceName;
 	@Column(name="CREATED_DATE")
 	private Date createdDate;
-	@Column(name="ITEM_STORE")
-	private String itemStore;
-	@Column(name="ITEM_LOCATION")
-	private String itemLocation;
-	@Column(name="ITEM_PRICE")
-	private Double itemPrice;
-	@Column(name="ITEM_STATUS")
-	private String itemStatus;
-	@Column(name="ITEM_TYPE")
-	private String itemType;
 	@Transient
 	private String messageId;
 	@Transient
