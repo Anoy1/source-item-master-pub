@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,13 +23,17 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 @Getter
 @Setter
+@ConfigurationProperties("kafka-config")
 @Slf4j
 public class KafkaConfig {
+	
+	private String kafkaTopic;
+	private String kafkaHost;
 	
 	@Bean
 	public ProducerFactory<String, String> producerFactory(){
 		Map<String,Object> kafkaConfig = new HashMap<>();
-		kafkaConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092");
+		kafkaConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHost);
 		kafkaConfig.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,StringSerializer.class);
 		kafkaConfig.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,StringSerializer.class);
 		kafkaConfig.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, "262144");

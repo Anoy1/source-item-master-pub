@@ -25,6 +25,10 @@ spring:
       database-platform: org.hibernate.dialect.MySQL5InnoDBDialect
       generate-ddl: true
       hibernate.ddl-auto: update
+
+kafka-config:
+   kafkaTopic: itemtopic
+   kafkaHost: 127.0.0.1:9092      
 ---
 spring:
    profiles:
