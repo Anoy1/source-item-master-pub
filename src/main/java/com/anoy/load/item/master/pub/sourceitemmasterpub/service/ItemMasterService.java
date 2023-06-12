@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import com.anoy.load.item.master.pub.sourceitemmasterpub.constants.ItemMasterConstants;
+import com.anoy.load.item.master.pub.sourceitemmasterpub.exception.ItemMasterDataNotFoundException;
+import com.anoy.load.item.master.pub.sourceitemmasterpub.exception.ItemMasterRuntimeNotFoundException;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.ControlEntity;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.DashBoard;
 import com.anoy.load.item.master.pub.sourceitemmasterpub.model.EntityAdhocRequest;
@@ -65,32 +68,61 @@ public class ItemMasterService {
 		publisherLogEntity.setCreatedDate(localDate);
 		dashBoard.setCreatedDate(localDate.toString());
 		dashBoard.setUniqueKey(uniqueKey.toString());
-		Date runnableDate = findLastRunDate();
-		Optional<List<ItemMasterRequest>> itemMasterRequest = getItemData(runnableDate,"ITEM MASTER");
+		ControlEntity controlEntrityLastRundateData = findLastRunDate();
+		Date runnableDate = controlEntrityLastRundateData.getRunnableDate();
+		log.info(ItemMasterConstants.LAST_RUNDATE + runnableDate);
+		Optional<List<ItemMasterRequest>> itemMasterRequest = getItemData(runnableDate,ItemMasterConstants.ITEM_MASTER);
+		log.info("Item Master Record as per last Run Date : "+ itemMasterRequest);
 		Optional<List<EntityAdhocRequest>> adhocItemMasterRequest = getAdocItemData();
+		log.info("Item Master Record as per Adhoc : "+ adhocItemMasterRequest);
 		publisherLogEntity.setTotalMessageCount(itemMasterRequest.get().size() + adhocItemMasterRequest.get().size());
+		log.info("Total Number Of Records : "+ itemMasterRequest.get().size() + adhocItemMasterRequest.get().size());
 		dashBoard.setItemApiCount(itemMasterRequest.get().size());
 		dashBoard.setAdhocCount(adhocItemMasterRequest.get().size());
 		if(itemMasterRequest.isPresent() || adhocItemMasterRequest.isPresent()) {
-		publishMessages(itemMasterRequest,adhocItemMasterRequest,localDate,publisherLogEntity,dashBoard);
-			}
-		}catch(SQLDataException e) {
-			log.error(e.getMessage());
+			publishMessages(itemMasterRequest,adhocItemMasterRequest,localDate,publisherLogEntity,dashBoard);
+			saveLastRunDate(localDate,controlEntrityLastRundateData);
+		}
+		}catch(ItemMasterRuntimeNotFoundException e) {
+		log.error(e.getLocalizedMessage());
+		publisherLogEntity.setComment(e.getMessage());
+		publisherLogEntity.setStatus(ItemMasterConstants.EXCEPTION);
+		dashBoard.setComment(e.getMessage());
+		dashBoard.setStatus(ItemMasterConstants.EXCEPTION);
+		}
+		catch(ItemMasterDataNotFoundException e) {
+			log.error(e.getLocalizedMessage());
+			publisherLogEntity.setComment(e.getMessage());
+			publisherLogEntity.setStatus(ItemMasterConstants.EXCEPTION);
+			dashBoard.setComment(e.getMessage());
+			dashBoard.setStatus(ItemMasterConstants.EXCEPTION);
 		}catch(Exception e) {
-			log.error(e.getMessage());
+			log.error(e.getLocalizedMessage());
+			publisherLogEntity.setComment(e.getMessage());
+			publisherLogEntity.setStatus(ItemMasterConstants.EXCEPTION);
+			dashBoard.setComment(e.getMessage());
+			dashBoard.setStatus(ItemMasterConstants.EXCEPTION);
 		}
 		finally {
-			if(ObjectUtils.isEmpty(dashBoard.getStatus()))dashBoard.setStatus("INCOMPLETE");
-			if(ObjectUtils.isEmpty(dashBoard.getComment()))dashBoard.setComment("INCOMPLETE");
+			if(ObjectUtils.isEmpty(dashBoard.getStatus()))dashBoard.setStatus(ItemMasterConstants.INCOMPLETE);
+			if(ObjectUtils.isEmpty(dashBoard.getComment()))dashBoard.setComment(ItemMasterConstants.INCOMPLETE);
 			log.info(mapper.writeValueAsString(dashBoard));
 			publisherLogRepository.save(publisherLogEntity);
+			log.info(ItemMasterConstants.INTERNAL_SAVE);
 		}
 
 	}
 
 
+	private void saveLastRunDate(LocalDateTime localDate,ControlEntity controlEntrityLastRundateData) {
+		controlEntrityLastRundateData.setRunnableDate(Date.from(localDate.atZone(ZoneId.systemDefault()).toInstant()));		
+		//controlTableRespository.save(controlEntrityLastRundateData);
+	}
+
+
 	private void publishMessages(Optional<List<ItemMasterRequest>> itemMasterRequest,
-			Optional<List<EntityAdhocRequest>> adhocItemMasterRequest, LocalDateTime localDate,PublisherLogEntity publisherLogEntity,DashBoard dashBoard) {
+			Optional<List<EntityAdhocRequest>> adhocItemMasterRequest, LocalDateTime localDate,PublisherLogEntity publisherLogEntity,DashBoard dashBoard) throws ItemMasterDataNotFoundException{
+		try {
 		messageSequenceRepository.save(new MessageIdEntity());
 		Integer messageId = messageSequenceRepository.findTopByOrderByIdDesc();
 		dashBoard.setMessageId(messageId);
@@ -103,7 +135,7 @@ public class ItemMasterService {
 			itemMasterRequest.get().stream().forEach(item -> {
 				item.setRunTime(localDate.toString());
 				item.setMessageId(messageId.toString());
-				Boolean sent = itemMasterPublisher.kafkaSendMessage(item,"Item Database on runtime",failureItemList);
+				Boolean sent = itemMasterPublisher.kafkaSendMessage(item,failureItemList);
 				if(sent) {
 					successItemApiList.add(item);
 				}
@@ -117,7 +149,7 @@ public class ItemMasterService {
 				if(item.isPresent()){
 					item.get().setRunTime(localDate.toString());
 					item.get().setMessageId(messageId.toString());
-					Boolean sent = itemMasterPublisher.kafkaSendMessage(item.get(),"Adhoc",failureItemList);
+					Boolean sent = itemMasterPublisher.kafkaSendMessage(item.get(),failureItemList);
 					if(sent) {
 						successAdhocList.add(adhocItem);
 					}
@@ -126,28 +158,37 @@ public class ItemMasterService {
 			});
 		}
 		dataSetToDashboard(failureItemList,successAdhocList,successItemApiList,dashBoard,publisherLogEntity);
+	}catch(Exception e) {
+		throw new ItemMasterDataNotFoundException("Unable to fetch the Item master Dat from database");
 	}
+}
 
 
 	private void dataSetToDashboard(Map<Integer, String> failureItemList, List<EntityAdhocRequest> successAdhocList,
 			List<ItemMasterRequest> successItemApiList,DashBoard dashBoard,PublisherLogEntity publisherLogEntity) {
 		if(failureItemList.size()>0 && (successAdhocList.size() + successItemApiList.size())>0) {
-			dashBoard.setStatus("PARTIAL SUCCESS");
-			publisherLogEntity.setStatus("PARTIAL SUCCESS");
+			dashBoard.setStatus(ItemMasterConstants.PARTIAL_SUCCESS);
+			publisherLogEntity.setStatus(ItemMasterConstants.PARTIAL_SUCCESS);
 			dashBoard.setComment("Partially Successsful In Transffering to Kafka");
 			publisherLogEntity.setComment("Partially Successsful In Transffering to Kafka");
+			log.info(String.format("Some of the messages are published from %s successfully : %s \n and from %s successfully : %s", 
+					"Item Database on runtime" ,successItemApiList.toString(),"Adhoc", successAdhocList.toString()));
+			log.info(String.format("Some of the messages are failed to publish : %s",failureItemList));
 		}
 		else if(publisherLogEntity.getTotalMessageCount() == (successAdhocList.size() + successItemApiList.size())) {
-			dashBoard.setStatus("SUCCESS");
-			publisherLogEntity.setStatus("SUCCESS");
+			dashBoard.setStatus(ItemMasterConstants.SUCCESS);
+			publisherLogEntity.setStatus(ItemMasterConstants.SUCCESS);
 			dashBoard.setComment("Successsful In Transffering to Kafka");
 			publisherLogEntity.setComment("Successsful In Transffering to Kafka");
+			log.info(String.format("All the message are published from %s successfully : %s \n and from %s successfully : %s", 
+					"Item Database on runtime" ,successItemApiList.toString(),"Adhoc", successAdhocList.toString()));
 		}
 		else {
-			dashBoard.setStatus("FAILED");
-			publisherLogEntity.setStatus("FAILED");
+			dashBoard.setStatus(ItemMasterConstants.FAILED);
+			publisherLogEntity.setStatus(ItemMasterConstants.FAILED);
 			dashBoard.setComment("Failure In Transffering to Kafka");
 			publisherLogEntity.setComment("Failure In Transffering to Kafka");
+			log.info(String.format("All of the messages are failed to publish : %s",failureItemList));
 		}
 		publisherLogEntity.setSuccessMessageCount(successAdhocList.size() + successItemApiList.size());
 		publisherLogEntity.setSuccessMessage(successItemApiList.toString() + successAdhocList.toString());
@@ -166,16 +207,20 @@ public class ItemMasterService {
 
 
 
-	private Optional<List<ItemMasterRequest>> getItemData(Date runnableDate,String interfaceName) {
-		return Optional.ofNullable(itemMasterDataRespository.findByCreatedDateAndInterfaceName(runnableDate,interfaceName));
-	}
+	private Optional<List<ItemMasterRequest>> getItemData(Date runnableDate,String interfaceName) throws ItemMasterDataNotFoundException{
+		Optional<List<ItemMasterRequest>> itemMasterList;
+		try {
+			itemMasterList = Optional.ofNullable(itemMasterDataRespository.findByCreatedDateAndInterfaceName(runnableDate,interfaceName));
+			}catch(Exception e) {
+				throw new ItemMasterDataNotFoundException("Unable to fetch the Item master Dat from database");
+			}
+	return 	itemMasterList;
+}
 
 
-	private Date findLastRunDate() throws SQLDataException{
-		List<ControlEntity> controlEntity = controlTableRespository.findAll();
-		List<ControlEntity> itemMasterData= controlEntity.stream().filter(controldata -> controldata.getIterfaceName().equals("ITEM MASTER")).collect(Collectors.toList());;
-		Date itemLastRunDate = itemMasterData.get(0).getRunnableDate();
-		return itemLastRunDate;
+	private ControlEntity findLastRunDate() throws ItemMasterRuntimeNotFoundException{
+		return controlTableRespository.findById(ItemMasterConstants.ITEM_MASTER).orElseThrow(()-> new ItemMasterRuntimeNotFoundException("Unable to Connect to the last run date Database"));
+
 	}
 
 }
